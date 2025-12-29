@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  # Реверс-прокси Nginx
+  nginx-proxy:
+    image: jwilder/nginx-proxy:alpine
+    container_name: nginx-proxy
+    restart: always
+    ports:
+      - "9000:80"
+      - "443:443"
+    volumes:
+      - vhostd:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - certs:/etc/nginx/certs:rw
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    labels:
+      - "com.github.nginx-proxy.nginx"
+
+  # Контейнер для Let’s Encrypt
+  letsencrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion
+    container_name: nginx-proxy-letsencrypt
+    restart: always
+    depends_on:
+      - nginx-proxy
+    environment:
+      - NGINX_PROXY_CONTAINER=nginx-proxy
+    volumes:
+      - vhostd:/etc/nginx/vhost.d
+      - html:/usr/share/nginx/html
+      - certs:/etc/nginx/certs:rw
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+      
+  # Веб-сервис
+  web:
+    build:
+      context: .
+      dockerfile: nginx.Dockerfile
+    image: nginx-psmap
+    container_name: nginx-psmap-container
+    restart: always
+    environment:
+      - VIRTUAL_HOST=apps.pr-cbs.ru,map.pr-cbs.ru,localhost
+      - LETSENCRYPT_HOST=apps.pr-cbs.ru,map.pr-cbs.ru
+      - LETSENCRYPT_EMAIL=newprcbs@gmail.com
+    volumes:
+      - dist:/usr/share/nginx/html:ro
+    depends_on:
+      - builder
+
+  # Обновление интерактивной карты
+  builder:
+    build:
+      context: .
+      dockerfile: builder.Dockerfile
+    container_name: psmap-builder
+    restart: always
+    working_dir: /app
+    volumes:
+      - .:/app
+      - dist:/app/dist
+      - ./logs:/var/log/cron   # логи на хосте
+      - ./crontab.txt:/app/crontab.txt
+      - ./rebuild-ps-map.sh:/app/rebuild-ps-map.sh
+    command: sh -c "crond -f -L /var/log/cron/cron.log"
+    
+volumes:
+  certs:
+  vhostd:
+  html:
+  dist:
