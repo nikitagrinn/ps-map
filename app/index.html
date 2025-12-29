@@ -1,1 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Интерактивная карта (Debug Mode)</title>
+    <meta charset="utf-8" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { height: 100vh; width: 100%; }
+        body { margin: 0; padding: 0; font-family: sans-serif; }
+        
+        /* Стили для инфо-панели */
+        .info-box { 
+            position: absolute; top: 10px; right: 10px; z-index: 1000; 
+            background: white; padding: 10px; border: 2px solid #333; 
+        }
+        
+        /* Стили для отображения координат (новое) */
+        .coords-box {
+            position: absolute; 
+            bottom: 20px; 
+            left: 20px; 
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-family: monospace;
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="info-box">
+        <h3>Петроградский район</h3>
+        <p>Наведи мышь, чтобы узнать координаты</p>
+    </div>
+    
+    <!-- Блок для вывода координат -->
+    <div id="coords-display" class="coords-box">Координаты: ...</div>
+    
+    <div id="map"></div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        var map = L.map('map').setView([59.96, 30.30], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Добавляем тестовые точки
+        var points = [
+            {coord: [59.964573, 30.311446], title: "Центральная районная библиотека имени А. С. Пушкина"},
+            {coord: [59.957538, 30.302519], title: "Библиотека им. Ленина"},
+            {coord: [59.969443, 30.302429], title: "Библиотека им. Б. Лавренёва"}
+        ];
+
+        points.forEach(p => {
+            L.marker(p.coord).addTo(map).bindPopup(p.title);
+        });
+
+        // --- МАГИЯ КООРДИНАТ ---
+        // Слушаем движение мыши по карте
+        map.on('mousemove', function(e) {
+            // Получаем широту и долготу
+            var lat = e.latlng.lat.toFixed(6); // 6 знаков после запятой
+            var lng = e.latlng.lng.toFixed(6);
+            
+            // Обновляем текст в блоке
+            document.getElementById('coords-display').innerText = lat + ', ' + lng;
+        });
+        
+        // Добавляем возможность скопировать координаты по клику (для удобства)
+        map.on('click', function(e) {
+            var lat = e.latlng.lat.toFixed(6);
+            var lng = e.latlng.lng.toFixed(6);
+            var text = lat + ', ' + lng;
+            
+            L.popup()
+                .setLatLng(e.latlng)
+                .setContent("Координаты: <br><b>" + text + "</b>")
+                .openOn(map);
+                
+            console.log(text); // Вывод в консоль браузера
+        });
+    </script>
+</body>
+</html>
 
